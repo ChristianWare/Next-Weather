@@ -9,12 +9,29 @@ export async function getServerSideProps(context) {
     };
   }
 
+  const res = await fetch(
+    `https://api.openweathermap.org/data/2.5/onecall?lat=${city.coord.lat}&lon=${city.coord.lon}&appid=${process.env.API_KEY}&exclude=minutely&units=metric`
+  );
+
+  const data = await res.json();
+
+  if (!data) {
+    return {
+      notFound: true,
+    };
+  }
 
   const slug = context.params.city;
+
+  const hourlyWeather = getHourlyWeather(data.hourly);
 
   return {
     props: {
       slug: slug,
+      city: city,
+      currentWeather: data.current,
+      dailyWeather: data.daily,
+      hourlyWeather: hourlyWeather,
     },
   };
 }
@@ -38,11 +55,31 @@ const getCity = (param) => {
   }
 };
 
-export default function City({ slug }) {
+const getHourlyWeather = (hourlyData) => {
+  const current = new Date();
+  current.setHours(current.getHours(), 0, 0, 0);
+  const tomorrow = new Date(current);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  // divide by 1000 to get timestamps in seconds
+  const currentTimeStamp = Math.floor(current.getTime() / 1000);
+  const tomorrowTimeStamp = Math.floor(tomorrow.getTime() / 1000);
+
+  const todaysData = hourlyData.filter((data) => data.dt < tomorrowTimeStamp);
+
+  return todaysData;
+};
+
+export default function City({
+  hourlyWeather,
+  currentWeather,
+  dailyWeather,
+  city,
+}) {
   return (
     <div>
       <h1>City Page</h1>
-      <h2>{slug}</h2>
     </div>
   );
 }
